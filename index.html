@@ -135,14 +135,6 @@
   #fullscreenBtn svg{ width:16px; height:16px; stroke:var(--white); fill:none; stroke-width:1.8; }
 
   /* Status bar mimic (purely decorative, like the screenshot) */
-  #fakeStatusBar{
-    position:absolute; top:0; left:0; right:0; z-index:7;
-    display:flex; justify-content:space-between; align-items:center;
-    padding: 8px 18px 0; font-size:14px; font-weight:600;
-    pointer-events:none; opacity:0.9;
-  }
-  #fakeStatusBar .icons{ display:flex; gap:6px; align-items:center; font-size:13px; }
-
   /* ---------- Glitch / connection trouble layer ---------- */
   #glitchLayer{
     position:absolute; inset:0; z-index:9; pointer-events:none;
@@ -205,12 +197,6 @@
 
   <div id="topShade"></div>
   <div id="bottomShade"></div>
-
-  <!-- decorative fake status bar, matches reference screenshot -->
-  <div id="fakeStatusBar">
-    <span id="clock">14:09</span>
-    <span class="icons">●REC 🔲 📶 🔋32</span>
-  </div>
 
   <button id="fullscreenBtn" title="Vollbild">
     <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -286,6 +272,7 @@
   let stream = null;
   let muted = false;
   let speakerOn = true;
+  const PERMISSION_KEY = 'liveCallCameraGranted';
 
   // ---- Camera handling ----
   async function startCamera(facingMode){
@@ -299,17 +286,38 @@
       });
       video.srcObject = stream;
       video.style.transform = (facingMode === 'environment') ? 'scaleX(1)' : 'scaleX(-1)';
+      localStorage.setItem(PERMISSION_KEY, 'true');
+      return true;
     }catch(err){
       statusText.textContent = 'Kein Kamerazugriff';
       console.error(err);
+      return false;
     }
   }
 
-  startBtn.addEventListener('click', async () => {
-    await startCamera(currentFacing);
+  async function beginCallExperience(){
     startOverlay.classList.add('hidden');
     beginStatusSequence();
     scheduleGlitches();
+  }
+
+  startBtn.addEventListener('click', async () => {
+    const ok = await startCamera(currentFacing);
+    if(ok) beginCallExperience();
+  });
+
+  // If the browser already granted camera access before (remembered via
+  // localStorage, and the browser itself also remembers the permission
+  // per origin), skip the start screen entirely on future visits.
+  window.addEventListener('DOMContentLoaded', async () => {
+    if(localStorage.getItem(PERMISSION_KEY) === 'true'){
+      const ok = await startCamera(currentFacing);
+      if(ok){
+        beginCallExperience();
+      }
+      // if it silently fails (e.g. permission was revoked in browser
+      // settings), the start overlay stays visible as a fallback.
+    }
   });
 
   document.getElementById('switchCamBtn').addEventListener('click', () => {
@@ -408,41 +416,35 @@
   }
 
   function reconnectEvent(){
+    // duration varies noticeably call to call, but stays within a
+    // believable range — sometimes a quick hiccup, sometimes a longer stall
+    const holdTime = 3000 + Math.random()*5000; // ~3–8s
     reconnectBanner.style.display = 'flex';
-    freezeFrame(1800 + Math.random()*1400);
+    freezeFrame(holdTime);
     setTimeout(() => {
       reconnectBanner.style.display = 'none';
-    }, 1600 + Math.random()*1200);
+    }, holdTime);
   }
 
   function scheduleGlitches(){
-    // frequent tiny glitches
+    // small glitches: every 15–30s
     (function loopSmall(){
-      const delay = 4000 + Math.random()*7000;
+      const delay = 15000 + Math.random()*15000;
       setTimeout(() => {
         glitchBurst();
         loopSmall();
       }, delay);
     })();
 
-    // occasional full freeze / reconnect banners
+    // full freeze / reconnect banners: every 30–45s
     (function loopBig(){
-      const delay = 14000 + Math.random()*16000;
+      const delay = 30000 + Math.random()*15000;
       setTimeout(() => {
         reconnectEvent();
         loopBig();
       }, delay);
     })();
   }
-
-  // keep clock roughly current, purely decorative
-  function tickClock(){
-    const el = document.getElementById('clock');
-    const now = new Date();
-    el.textContent = now.toTimeString().slice(0,5);
-  }
-  tickClock();
-  setInterval(tickClock, 30000);
 
 })();
 </script>
