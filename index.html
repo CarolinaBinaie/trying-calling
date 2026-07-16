@@ -252,6 +252,8 @@
     <button id="startBtn">Kamera aktivieren</button>
   </div>
 
+  <audio id="ringtoneAudio" loop src="klingelton.mp3"></audio>
+
 </div>
 
 <script>
@@ -267,6 +269,17 @@
   const glitchLayer = document.getElementById('glitchLayer');
   const noiseCanvas = document.getElementById('noiseCanvas');
   const noiseCtx = noiseCanvas.getContext('2d');
+  const ringtoneAudio = document.getElementById('ringtoneAudio');
+
+  function playRingtone(){
+    ringtoneAudio.currentTime = 0;
+    ringtoneAudio.muted = muted;
+    ringtoneAudio.play().catch(() => {});
+  }
+  function stopRingtone(){
+    ringtoneAudio.pause();
+    ringtoneAudio.currentTime = 0;
+  }
 
   let currentFacing = 'user';
   let stream = null;
@@ -299,6 +312,7 @@
     startOverlay.classList.add('hidden');
     beginStatusSequence();
     scheduleGlitches();
+    playRingtone();
   }
 
   startBtn.addEventListener('click', async () => {
@@ -339,6 +353,7 @@
   muteBtn.addEventListener('click', () => {
     muted = !muted;
     muteBtn.classList.toggle('active-white', muted);
+    ringtoneAudio.muted = muted;
   });
   const speakerBtn = document.getElementById('speakerBtn');
   speakerBtn.addEventListener('click', () => {
@@ -349,6 +364,7 @@
     statusText.textContent = 'Anruf beendet';
     document.querySelector('.dots').style.display = 'none';
     if(stream) stream.getTracks().forEach(t => t.stop());
+    stopRingtone();
     setTimeout(() => {
       // restart the "endless calling" loop, since it's the piece's premise
       location.reload();
