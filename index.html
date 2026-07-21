@@ -275,7 +275,7 @@
 
   function playRingtone(){
     ringtoneAudio.currentTime = 0;
-    ringtoneAudio.muted = muted;
+    ringtoneAudio.muted = 1;
     ringtoneAudio.play().catch(() => {});
   }
   function stopRingtone(){
